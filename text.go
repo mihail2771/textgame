@@ -1,5 +1,66 @@
 package main
 
+type Position string
+
+const (
+	PositionTable Position = "table"
+	PositionChair Position = "chair"
+)
+
+var positionLabels = map[Position]string{
+	PositionTable: "на столе",
+	PositionChair: "на стуле",
+}
+
+type Item string
+
+const (
+	ItemTea      Item = "tea"
+	ItemBackpack Item = "backpack"
+	ItemKeys     Item = "keys"
+	ItemNotes    Item = "notes"
+)
+
+var itemLabels = map[Item]string{
+	ItemTea:      "чай",
+	ItemBackpack: "рюкзак",
+	ItemKeys:     "ключи",
+	ItemNotes:    "конспекты",
+}
+
+var itemLabelToID = map[string]Item{
+	"чай":       ItemTea,
+	"рюкзак":    ItemBackpack,
+	"ключи":     ItemKeys,
+	"конспекты": ItemNotes,
+}
+
+type RoomID string
+
+const (
+	RoomKitchen RoomID = "kitchen"
+	RoomRoom    RoomID = "room"
+	RoomHallway RoomID = "hallway"
+	RoomStreet  RoomID = "street"
+	RoomHome    RoomID = "home"
+)
+
+var roomLabels = map[RoomID]string{
+	RoomKitchen: "кухня",
+	RoomRoom:    "комната",
+	RoomHallway: "коридор",
+	RoomStreet:  "улица",
+	RoomHome:    "домой",
+}
+
+var roomLabelToID = map[string]RoomID{
+	"кухня":   RoomKitchen,
+	"комната": RoomRoom,
+	"коридор": RoomHallway,
+	"улица":   RoomStreet,
+	"домой":   RoomHome,
+}
+
 const (
 	cmdLook  = "осмотреться"
 	cmdGo    = "идти"
