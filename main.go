@@ -4,9 +4,70 @@ import (
 	"strings"
 )
 
-var positions = []string{"на столе", "на стуле"}
+type Position string
 
-var rooms map[string]*Room
+const (
+	PositionTable Position = "table"
+	PositionChair Position = "chair"
+)
+
+var positionLabels = map[Position]string{
+	PositionTable: "на столе",
+	PositionChair: "на стуле",
+}
+
+type Item string
+
+const (
+	ItemTea      Item = "tea"
+	ItemBackpack Item = "backpack"
+	ItemKeys     Item = "keys"
+	ItemNotes    Item = "notes"
+)
+
+var itemLabels = map[Item]string{
+	ItemTea:      "чай",
+	ItemBackpack: "рюкзак",
+	ItemKeys:     "ключи",
+	ItemNotes:    "конспекты",
+}
+
+var itemLabelToID = map[string]Item{
+	"чай":       ItemTea,
+	"рюкзак":    ItemBackpack,
+	"ключи":     ItemKeys,
+	"конспекты": ItemNotes,
+}
+
+type RoomID string
+
+const (
+	RoomKitchen RoomID = "kitchen"
+	RoomRoom    RoomID = "room"
+	RoomHallway RoomID = "hallway"
+	RoomStreet  RoomID = "street"
+	RoomHome    RoomID = "home"
+)
+
+var roomLabels = map[RoomID]string{
+	RoomKitchen: "кухня",
+	RoomRoom:    "комната",
+	RoomHallway: "коридор",
+	RoomStreet:  "улица",
+	RoomHome:    "домой",
+}
+
+var roomLabelToID = map[string]RoomID{
+	"кухня":   RoomKitchen,
+	"комната": RoomRoom,
+	"коридор": RoomHallway,
+	"улица":   RoomStreet,
+	"домой":   RoomHome,
+}
+
+var positions = []Position{PositionTable, PositionChair}
+
+var rooms map[RoomID]*Room
 var player Player
 
 func SubEmpty[T comparable](value, defaultValue T) T {
@@ -17,100 +78,126 @@ func SubEmpty[T comparable](value, defaultValue T) T {
 	return value
 }
 
+func parseItem(label string) (Item, bool) {
+	item, ok := itemLabelToID[label]
+	return item, ok
+}
+
+func parseRoom(label string) (RoomID, bool) {
+	roomID, ok := roomLabelToID[label]
+	return roomID, ok
+}
+
 func initGame() {
-	rooms = map[string]*Room{
-		"кухня": NewRoom(
-			"кухня",
-			"ты находишься на кухне, ",
-			"кухня, ничего интересного.",
-			[]string{"коридор"},
-			map[string][]string{"на столе": {"чай"}},
+	rooms = map[RoomID]*Room{
+		RoomKitchen: NewRoom(
+			RoomKitchen,
+			roomLabels[RoomKitchen],
+			descKitchenStart,
+			descKitchenIn,
+			[]RoomID{RoomHallway},
+			map[Position][]Item{PositionTable: {ItemTea}},
 		),
-		"комната": NewRoom(
-			"комната",
+		RoomRoom: NewRoom(
+			RoomRoom,
+			roomLabels[RoomRoom],
 			"",
-			"ты в своей комнате.",
-			[]string{"коридор"},
-			map[string][]string{
-				"на стуле": {"рюкзак"},
-				"на столе": {"ключи", "конспекты"}},
+			descYourRoomIn,
+			[]RoomID{RoomHallway},
+			map[Position][]Item{
+				PositionChair: {ItemBackpack},
+				PositionTable: {ItemKeys, ItemNotes}},
 		),
-		"коридор": NewRoom(
-			"коридор",
+		RoomHallway: NewRoom(
+			RoomHallway,
+			roomLabels[RoomHallway],
 			"",
-			"ничего интересного.",
-			[]string{"кухня", "комната", "улица"},
-			map[string][]string{},
+			descHallwayIn,
+			[]RoomID{RoomKitchen, RoomRoom, RoomStreet},
+			map[Position][]Item{},
 		),
-		"улица": NewRoom(
-			"улица",
+		RoomStreet: NewRoom(
+			RoomStreet,
+			roomLabels[RoomStreet],
 			"",
-			"на улице весна.",
-			[]string{"домой"},
-			map[string][]string{},
+			descStreetIn,
+			[]RoomID{RoomHome},
+			map[Position][]Item{},
 		),
 	}
 
-	rooms["домой"] = rooms["коридор"]
-	rooms["улица"].isOpen = false
-	rooms["кухня"].taskDescription = "надо собрать рюкзак и идти в универ. "
+	rooms[RoomHome] = rooms[RoomHallway]
+	rooms[RoomStreet].isOpen = false
+	rooms[RoomKitchen].taskDescription = taskNeedBackpack
 
 	player = Player{
-		room:  rooms["кухня"],
-		items: []string{},
+		room:  rooms[RoomKitchen],
+		items: []Item{},
 	}
-
-	go func() {
-
-	}()
-
 }
 
 func updateWorld() {
-	var bag = false
-
-	if player.room.name == "улица" {
+	if player.room.id == RoomStreet {
 		return
 	}
-	if !bag && player.isbag {
-		bag = true
-		rooms["кухня"].taskDescription = "надо идти в универ. "
+	if player.isbag {
+		rooms[RoomKitchen].taskDescription = taskGoUniversity
 	}
 }
 
 func handleCommand(command string) string {
+	args := strings.Fields(command)
+	if len(args) == 0 {
+		return msgUnknownCommand
+	}
 
-	var result = ""
-
-	args := strings.Split(command, " ")
+	var result string
 	switch args[0] {
-	case "осмотреться":
+	case cmdLook:
 		result = player.lookAround()
-	case "идти":
-		result = player.goTo(args[1])
-	case "надеть":
-		switch args[1] {
-		case "рюкзак":
-			result = player.getBag()
-		default:
-			result = "нет такого"
-		}
-	case "взять":
+	case cmdGo:
 		if len(args) < 2 {
-			result = "не выбран предмет для взятия"
+			return msgNoPath
+		}
+		roomID, ok := parseRoom(args[1])
+		if !ok {
+			return msgNoSuch
+		}
+		result = player.goTo(roomID)
+	case cmdWear:
+		if len(args) < 2 {
+			return msgNoWear
+		}
+		itemID, ok := parseItem(args[1])
+		if !ok || itemID != ItemBackpack {
+			return msgNoSuch
+		}
+		result = player.getBag()
+	case cmdTake:
+		if len(args) < 2 {
+			return msgNoTake
+		}
+		itemID, ok := parseItem(args[1])
+		if !ok {
+			return msgNoSuch
 		}
 		if player.isbag {
-			result = player.getInBag(args[1])
+			result = player.getInBag(itemID)
 		} else {
-			result = "некуда класть"
+			result = msgNoBagSpace
 		}
-	case "применить":
+	case cmdApply:
 		if len(args) < 3 {
-			result = "не к чему применить"
+			return msgNoApply
 		}
-		result = player.activeItem(args[1], args[2])
+		itemID, ok := parseItem(args[1])
+		if !ok {
+			result = msgNoItemInInventory(args[1])
+		} else {
+			result = player.activeItem(itemID, args[2])
+		}
 	default:
-		result = "неизвестная команда"
+		result = msgUnknownCommand
 	}
 
 	updateWorld()

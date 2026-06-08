@@ -6,36 +6,35 @@ import (
 )
 
 type Room struct {
+	id              RoomID
 	name            string
 	description     string
 	taskDescription string
 	inDescription   string
-	items           map[string][]string
-	exits           []string
+	items           map[Position][]Item
+	exits           []RoomID
 	isOpen          bool
 }
 
 func (r *Room) lookAround() string {
-
-	return fmt.Sprintf("%s%s%sможно пройти - %s", r.description, r.mapToString(), r.taskDescription, strings.Join(r.exits, ", "))
+	return fmt.Sprintf("%s%s%s"+msgCanGo, r.description, r.mapToString(), r.taskDescription, formatRoomList(r.exits))
 }
 
 func (r *Room) lookAroundIn() string {
-	return fmt.Sprintf("%s можно пройти - %s", r.inDescription, strings.Join(r.exits, ", "))
+	return fmt.Sprintf(msgRoomIn, r.inDescription, formatRoomList(r.exits))
 }
 
 func (r *Room) mapToString() string {
 	var parts []string
 	for _, position := range positions {
-		itemNames := r.items[position]
-		if len(itemNames) == 0 {
+		itemIDs := r.items[position]
+		if len(itemIDs) == 0 {
 			continue
 		}
-		parts = append(parts, fmt.Sprintf("%s: %s", position, strings.Join(itemNames, ", ")))
-
+		parts = append(parts, fmt.Sprintf("%s: %s", positionLabels[position], joinItemLabels(itemIDs)))
 	}
 	if len(parts) == 0 {
-		return "пустая комната. "
+		return msgRoomEmpty
 	}
 	if r.taskDescription != "" {
 		return fmt.Sprintf("%s, ", strings.Join(parts, ", "))
@@ -43,8 +42,25 @@ func (r *Room) mapToString() string {
 	return fmt.Sprintf("%s. ", strings.Join(parts, ", "))
 }
 
-func NewRoom(name string, description string, inDescription string, exits []string, items map[string][]string) *Room {
+func joinItemLabels(items []Item) string {
+	var labels []string
+	for _, item := range items {
+		labels = append(labels, itemLabels[item])
+	}
+	return strings.Join(labels, ", ")
+}
+
+func formatRoomList(roomIDs []RoomID) string {
+	var names []string
+	for _, id := range roomIDs {
+		names = append(names, roomLabels[id])
+	}
+	return strings.Join(names, ", ")
+}
+
+func NewRoom(id RoomID, name string, description string, inDescription string, exits []RoomID, items map[Position][]Item) *Room {
 	return &Room{
+		id:              id,
 		name:            name,
 		description:     description,
 		inDescription:   inDescription,
