@@ -1,13 +1,60 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 )
 
-var positions = []Position{PositionTable, PositionChair}
+type Game struct {
+	Rooms   map[RoomID]*Room
+	Player  Player
+	Aliases map[string]string
+}
 
-var rooms map[RoomID]*Room
-var player Player
+func loadGame(path string) (*Game, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	type playerConfig struct {
+		Room  RoomID `json:"room"`
+		Items []Item `json:"items"`
+		Isbag bool   `json:"isbag"`
+	}
+
+	type gameConfig struct {
+		Rooms   map[RoomID]*Room  `json:"rooms"`
+		Player  playerConfig      `json:"player"`
+		Aliases map[string]string `json:"aliases"`
+	}
+
+	var config gameConfig
+	if err := json.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
+
+	for id, room := range config.Rooms {
+		room.ID = id
+	}
+
+	playerRoom, ok := config.Rooms[config.Player.Room]
+	if !ok {
+		return nil, fmt.Errorf("unknown player room %q", config.Player.Room)
+	}
+
+	return &Game{
+		Rooms: config.Rooms,
+		Player: Player{
+			Room:  playerRoom,
+			Items: config.Player.Items,
+			Isbag: config.Player.Isbag,
+		},
+		Aliases: config.Aliases,
+	}, nil
+}
 
 func SubEmpty[T comparable](value, defaultValue T) T {
 	var zero T
@@ -27,60 +74,23 @@ func parseRoom(label string) (RoomID, bool) {
 	return roomID, ok
 }
 
+var game *Game
+
 func initGame() {
-	rooms = map[RoomID]*Room{
-		RoomKitchen: NewRoom(
-			RoomKitchen,
-			roomLabels[RoomKitchen],
-			descKitchenStart,
-			descKitchenIn,
-			[]RoomID{RoomHallway},
-			map[Position][]Item{PositionTable: {ItemTea}},
-		),
-		RoomRoom: NewRoom(
-			RoomRoom,
-			roomLabels[RoomRoom],
-			"",
-			descYourRoomIn,
-			[]RoomID{RoomHallway},
-			map[Position][]Item{
-				PositionChair: {ItemBackpack},
-				PositionTable: {ItemKeys, ItemNotes}},
-		),
-		RoomHallway: NewRoom(
-			RoomHallway,
-			roomLabels[RoomHallway],
-			"",
-			descHallwayIn,
-			[]RoomID{RoomKitchen, RoomRoom, RoomStreet},
-			map[Position][]Item{},
-		),
-		RoomStreet: NewRoom(
-			RoomStreet,
-			roomLabels[RoomStreet],
-			"",
-			descStreetIn,
-			[]RoomID{RoomHome},
-			map[Position][]Item{},
-		),
+	config, err := loadGame("game_init.json")
+	if err != nil {
+		panic(err)
 	}
 
-	rooms[RoomHome] = rooms[RoomHallway]
-	rooms[RoomStreet].isOpen = false
-	rooms[RoomKitchen].taskDescription = taskNeedBackpack
-
-	player = Player{
-		room:  rooms[RoomKitchen],
-		items: []Item{},
-	}
+	game = config
 }
 
 func updateWorld() {
-	if player.room.id == RoomStreet {
+	if game.Player.Room.ID == RoomStreet {
 		return
 	}
-	if player.isbag {
-		rooms[RoomKitchen].taskDescription = taskGoUniversity
+	if game.Player.Isbag {
+		game.Rooms[RoomKitchen].TaskDescription = taskGoUniversity
 	}
 }
 
@@ -93,7 +103,7 @@ func handleCommand(command string) string {
 	var result string
 	switch args[0] {
 	case cmdLook:
-		result = player.lookAround()
+		result = game.Player.lookAround()
 	case cmdGo:
 		if len(args) < 2 {
 			return msgNoPath
@@ -102,7 +112,7 @@ func handleCommand(command string) string {
 		if !ok {
 			return msgNoSuch
 		}
-		result = player.goTo(roomID)
+		result = game.Player.goTo(roomID)
 	case cmdWear:
 		if len(args) < 2 {
 			return msgNoWear
@@ -111,7 +121,7 @@ func handleCommand(command string) string {
 		if !ok || itemID != ItemBackpack {
 			return msgNoSuch
 		}
-		result = player.getBag()
+		result = game.Player.getBag()
 	case cmdTake:
 		if len(args) < 2 {
 			return msgNoTake
@@ -120,8 +130,8 @@ func handleCommand(command string) string {
 		if !ok {
 			return msgNoSuch
 		}
-		if player.isbag {
-			result = player.getInBag(itemID)
+		if game.Player.Isbag {
+			result = game.Player.getInBag(itemID)
 		} else {
 			result = msgNoBagSpace
 		}
@@ -133,7 +143,7 @@ func handleCommand(command string) string {
 		if !ok {
 			result = msgNoItemInInventory(args[1])
 		} else {
-			result = player.activeItem(itemID, args[2])
+			result = game.Player.activeItem(itemID, args[2])
 		}
 	default:
 		result = msgUnknownCommand
