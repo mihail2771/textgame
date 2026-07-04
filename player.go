@@ -1,39 +1,39 @@
 package main
 
 type Player struct {
-	room  *Room
-	items []Item
-	isbag bool
+	Room  *Room
+	Items []Item
+	Isbag bool
 }
 
 func (p *Player) getBag() string {
-	if p.isbag {
+	if p.Isbag {
 		return msgAlreadyWearing
 	}
-	for _, position := range positions {
-		for i, item := range p.room.items[position] {
+	for _, position := range []Position{PositionTable, PositionChair} {
+		for i, item := range p.Room.Items[position] {
 			if item == ItemBackpack {
-				p.room.items[position] = append(p.room.items[position][:i], p.room.items[position][i+1:]...)
+				p.Room.Items[position] = append(p.Room.Items[position][:i], p.Room.Items[position][i+1:]...)
 				break
 			}
 		}
 	}
-	p.isbag = true
+	p.Isbag = true
 	return msgWoreBackpack
 }
 
 func (p *Player) lookAround() string {
-	return p.room.lookAround()
+	return p.Room.lookAround()
 }
 
 func (p *Player) getInBag(item Item) string {
-	for pos, itemsInPosition := range p.room.items {
+	for pos, itemsInPosition := range p.Room.Items {
 		for i, stored := range itemsInPosition {
 			if stored == item {
-				p.items = append(p.items, item)
-				p.room.items[pos] = append(p.room.items[pos][:i], p.room.items[pos][i+1:]...)
-				if len(p.room.items[pos]) == 0 {
-					delete(p.room.items, pos)
+				p.Items = append(p.Items, item)
+				p.Room.Items[pos] = append(p.Room.Items[pos][:i], p.Room.Items[pos][i+1:]...)
+				if len(p.Room.Items[pos]) == 0 {
+					delete(p.Room.Items, pos)
 				}
 				return msgItemAdded(item)
 			}
@@ -44,7 +44,7 @@ func (p *Player) getInBag(item Item) string {
 
 func (p *Player) goTo(roomID RoomID) string {
 	found := false
-	for _, exit := range p.room.exits {
+	for _, exit := range p.Room.Exits {
 		if exit == roomID {
 			found = true
 			break
@@ -55,25 +55,25 @@ func (p *Player) goTo(roomID RoomID) string {
 		return msgNoPathToRoom(roomID)
 	}
 
-	if !rooms[roomID].isOpen {
+	if !game.Rooms[roomID].IsOpen {
 		return msgDoorClosed
 	}
 
-	p.room = rooms[roomID]
-	return p.room.lookAroundIn()
+	p.Room = game.Rooms[roomID]
+	return p.Room.lookAroundIn()
 }
 
 func (p *Player) activeItem(item Item, subject string) string {
 	itemInInventory := false
-	for _, stored := range p.items {
+	for _, stored := range p.Items {
 		if stored == item {
 			itemInInventory = true
 			break
 		}
 	}
-	if p.isbag && itemInInventory {
+	if p.Isbag && itemInInventory {
 		if item == ItemKeys && subject == subjectDoor {
-			rooms[RoomStreet].isOpen = true
+			game.Rooms[RoomStreet].IsOpen = true
 			return msgDoorOpened
 		}
 		return msgNoApply

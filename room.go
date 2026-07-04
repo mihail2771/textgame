@@ -6,28 +6,28 @@ import (
 )
 
 type Room struct {
-	id              RoomID
-	name            string
-	description     string
-	taskDescription string
-	inDescription   string
-	items           map[Position][]Item
-	exits           []RoomID
-	isOpen          bool
+	ID              RoomID              `json:"id"`
+	Name            string              `json:"name"`
+	Description     string              `json:"description"`
+	InDescription   string              `json:"inDescription"`
+	Exits           []RoomID            `json:"exits"`
+	Items           map[Position][]Item `json:"items"`
+	TaskDescription string              `json:"taskDescription,omitempty"`
+	IsOpen          bool                `json:"isOpen,omitempty"`
 }
 
 func (r *Room) lookAround() string {
-	return fmt.Sprintf("%s%s%s"+msgCanGo, r.description, r.mapToString(), r.taskDescription, formatRoomList(r.exits))
+	return fmt.Sprintf("%s%s%s"+msgCanGo, r.Description, r.mapToString(), r.TaskDescription, formatRoomList(r.Exits))
 }
 
 func (r *Room) lookAroundIn() string {
-	return fmt.Sprintf(msgRoomIn, r.inDescription, formatRoomList(r.exits))
+	return fmt.Sprintf(msgRoomIn, r.InDescription, formatRoomList(r.Exits))
 }
 
 func (r *Room) mapToString() string {
 	var parts []string
-	for _, position := range positions {
-		itemIDs := r.items[position]
+	for _, position := range []Position{PositionTable, PositionChair} {
+		itemIDs := r.Items[position]
 		if len(itemIDs) == 0 {
 			continue
 		}
@@ -36,7 +36,7 @@ func (r *Room) mapToString() string {
 	if len(parts) == 0 {
 		return msgRoomEmpty
 	}
-	if r.taskDescription != "" {
+	if r.TaskDescription != "" {
 		return fmt.Sprintf("%s, ", strings.Join(parts, ", "))
 	}
 	return fmt.Sprintf("%s. ", strings.Join(parts, ", "))
@@ -60,13 +60,13 @@ func formatRoomList(roomIDs []RoomID) string {
 
 func NewRoom(id RoomID, name string, description string, inDescription string, exits []RoomID, items map[Position][]Item) *Room {
 	return &Room{
-		id:              id,
-		name:            name,
-		description:     description,
-		inDescription:   inDescription,
-		items:           items,
-		exits:           exits,
-		isOpen:          true,
-		taskDescription: "",
+		ID:              id,
+		Name:            name,
+		Description:     description,
+		InDescription:   inDescription,
+		Items:           items,
+		Exits:           exits,
+		IsOpen:          true,
+		TaskDescription: "",
 	}
 }

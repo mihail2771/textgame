@@ -1,0 +1,50 @@
+{
+  "rooms": {
+    "kitchen": {
+      "name": "кухня",
+      "description": "ты находишься на кухне, ",
+      "inDescription": "кухня, ничего интересного.",
+      "exits": ["hallway"],
+      "items": {
+        "table": ["tea"]
+      },
+      "taskDescription": "надо собрать рюкзак и идти в универ. ",
+      "isOpen": true
+    },
+    "room": {
+      "name": "комната",
+      "description": "",
+      "inDescription": "ты в своей комнате.",
+      "exits": ["hallway"],
+      "items": {
+        "chair": ["backpack"],
+        "table": ["keys", "notes"]
+      },
+      "isOpen": true
+    },
+    "hallway": {
+      "name": "коридор",
+      "description": "",
+      "inDescription": "ничего интересного.",
+      "exits": ["kitchen", "room", "street"],
+      "items": {},
+      "isOpen": true
+    },
+    "street": {
+      "name": "улица",
+      "description": "",
+      "inDescription": "на улице весна.",
+      "exits": ["home"],
+      "items": {},
+      "isOpen": false
+    }
+  },
+  "player": {
+    "room": "kitchen",
+    "items": [],
+    "isbag": false
+  },
+  "aliases": {
+    "home": "hallway"
+  }
+}
